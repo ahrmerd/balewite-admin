@@ -1,7 +1,7 @@
 import { fetchUtils } from "react-admin";
 import { stringify } from "query-string";
 import Cookies from "js-cookie";
-const apiUrl = "http://api.b.test/api";
+const apiUrl = "http://api.gizo.ga/api";
 const countHeader = "Total-Count";
 
 // const httpClient = fetchUtils.fetchJson;
