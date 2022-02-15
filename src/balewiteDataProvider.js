@@ -1,9 +1,10 @@
 import { fetchUtils } from "react-admin";
 import { stringify } from "query-string";
 import Cookies from "js-cookie";
-const apiUrl = "http://api.gizo.ga/api";
+const apiUrl = `${import.meta.env.VITE_API_URL}/api`;
 const countHeader = "Total-Count";
 
+console.log(import.meta.env);
 // const httpClient = fetchUtils.fetchJson;
 const httpClient = (url, options = {}) => {
   if (!options.headers) {

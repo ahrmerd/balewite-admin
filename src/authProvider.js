@@ -1,7 +1,9 @@
 import jsCookies from "js-cookie";
 // const url = (endpoint) => `http://api.b.test/${endpoint}`;
 import axios from "axios";
-const baseUrl = "http://api.b.test";
+const apiUrl = import.meta.env.VITE_API_URL;
+
+const baseUrl = apiUrl;
 export const authClient = axios.create({
   baseURL: baseUrl,
   withCredentials: true, // required to handle the CSRF token
@@ -50,24 +52,12 @@ const authProvider = {
         password,
       });
       if (response.status < 200 || response.status >= 300) {
+        console.log(response);
         throw new Error(response.statusText);
       }
-      console.log(response);
       setLogin();
     } catch (err) {
-      const res = err.response;
-      if (res) {
-        const usernameErrors = res.data.errors.username;
-        if (usernameErrors) {
-          let message = "";
-          usernameErrors.forEach((error) => {
-            message += error;
-          });
-          throw new Error(message);
-        }
-        throw new Error(res.data.message);
-      }
-      throw new Error(err);
+      throw new Error(err.data.message);
     }
   },
   checkAuth: () => (isLoggedIn() ? Promise.resolve() : Promise.reject()),
@@ -75,7 +65,12 @@ const authProvider = {
     // Required for the authentication to work
     return Promise.resolve();
   },
-  logout: () => {
+  logout: async () => {
+    try {
+      await authClient.post("api/logout");
+    } catch (error) {
+      console.log("no allowed");
+    }
     setlogOut();
     return Promise.resolve();
   },
