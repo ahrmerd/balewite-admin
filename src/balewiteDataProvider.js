@@ -2,10 +2,8 @@ import { fetchUtils } from "react-admin";
 import { stringify } from "query-string";
 import Cookies from "js-cookie";
 const apiUrl = `${import.meta.env.VITE_API_URL}/api`;
-const countHeader = "Total-Count";
+const countVar = "Total-Count";
 
-console.log(import.meta.env);
-// const httpClient = fetchUtils.fetchJson;
 const httpClient = (url, options = {}) => {
   if (!options.headers) {
     options.headers = new Headers({
@@ -19,7 +17,7 @@ const httpClient = (url, options = {}) => {
 };
 
 export default {
-  getList: (resource, params) => {
+  getList: async (resource, params) => {
     const { page, perPage } = params.pagination;
     const { field, order } = params.sort;
     const filters = params.filter;
@@ -31,44 +29,39 @@ export default {
     const sort = order == "ASC" ? `${field}` : `-${field}`;
     const query = {
       sort: sort,
-      range: JSON.stringify([(page - 1) * perPage, page * perPage - 1]),
+      range: JSON.stringify([(page - 1) * perPage, page * perPage]),
     };
 
     const url = `${apiUrl}/${resource}?${filterQuery}&${stringify(query)}`;
-    console.log(url);
-    const Header = "Total-Count";
-    return httpClient(url).then(({ headers, json }) => {
-      if (!headers.has(countHeader)) {
-        throw new Error(
-          `The ${countHeader} header is missing in the HTTP Response. The simple REST data provider expects responses for lists of resources to contain this header with the total number of results to build the pagination. If you are using CORS, did you declare ${countHeader} in the Access-Control-Expose-Headers header?`
-        );
-      }
-      return {
-        data: json,
-        total:
-          countHeader === "Content-Range"
-            ? parseInt(headers.get("content-range").split("/").pop(), 10)
-            : parseInt(headers.get(countHeader.toLowerCase())),
-      };
-    });
+    const { json } = await httpClient(url);
+    // if (!headers.has(countHeader)) {
+    //   throw new Error(
+    //     `The ${countHeader} header is missing in the HTTP Response. The simple REST data provider expects responses for lists of resources to contain this header with the total number of results to build the pagination. If you are using CORS, did you declare ${countHeader} in the Access-Control-Expose-Headers header?`
+    //   );
+    // }
+    return {
+      data: json.data,
+      total: json[countVar],
+    };
   },
 
   getOne: (resource, params) =>
     httpClient(`${apiUrl}/${resource}/${params.id}`).then(({ json }) => ({
-      data: json,
+      data: json.data,
     })),
 
-  getMany: (resource, params) => {
+  getMany: async (resource, params) => {
     const filters = params.filter;
     let filterQuery = "";
     for (const property in filters) {
       filterQuery += `filter[${property}]=${filters[property]}&`;
     }
     const url = `${apiUrl}/${resource}?${filterQuery}`;
-    return httpClient(url).then(({ json }) => ({ data: json }));
+    const { json } = await httpClient(url);
+    return { data: json.data };
   },
 
-  getManyReference: (resource, params) => {
+  getManyReference: async (resource, params) => {
     const { page, perPage } = params.pagination;
     const { field, order } = params.sort;
     const filters = params.filter;
@@ -89,17 +82,18 @@ export default {
     const url = `${apiUrl}/${resource}?${filterQuery}&${stringify(query)}`;
     // const url = `${apiUrl}/${resource}?${stringify(query)}`;
 
-    return httpClient(url).then(({ headers, json }) => ({
+    const { json } = await httpClient(url);
+    return {
       data: json,
-      total: parseInt(headers.get("Total-Count"), 10),
-    }));
+      total: json[countVar],
+    };
   },
 
   update: (resource, params) =>
     httpClient(`${apiUrl}/${resource}/${params.id}`, {
       method: "PUT",
       body: JSON.stringify(params.data),
-    }).then(({ json }) => ({ data: json })),
+    }).then(({ json }) => ({ data: json.data })),
 
   updateMany: (resource, params) =>
     Promise.all(
@@ -109,20 +103,22 @@ export default {
           body: JSON.stringify(params.data),
         })
       )
-    ).then((responses) => ({ data: responses.map(({ json }) => json.id) })),
+    ).then((responses) => ({
+      data: responses.map(({ json }) => json.data.id),
+    })),
 
   create: (resource, params) =>
     httpClient(`${apiUrl}/${resource}`, {
       method: "POST",
       body: JSON.stringify(params.data),
     }).then(({ json }) => ({
-      data: { ...params.data, id: json.id },
+      data: { ...params.data, id: json.data.id },
     })),
 
   delete: (resource, params) =>
     httpClient(`${apiUrl}/${resource}/${params.id}`, {
       method: "DELETE",
-    }).then(({ json }) => ({ data: json })),
+    }).then(({ json }) => ({ data: json.data })),
 
   deleteMany: (resource, params) =>
     Promise.all(
@@ -131,5 +127,7 @@ export default {
           method: "DELETE",
         })
       )
-    ).then((responses) => ({ data: responses.map(({ json }) => json.id) })),
+    ).then((responses) => ({
+      data: responses.map(({ json }) => json.data.id),
+    })),
 };
